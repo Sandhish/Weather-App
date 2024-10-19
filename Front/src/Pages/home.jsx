@@ -4,6 +4,8 @@ import { WeatherCard } from './WeatherCard';
 import { ForecastCard } from './Forecast';
 import styles from '../Pages/Styles.module.css';
 import { ErrorPage } from './ErrorPage';
+import { FaSearch } from 'react-icons/fa'; 
+import { Link } from "react-router-dom";
 
 const Home = () => {
     const [location, setLocation] = useState('');
@@ -47,7 +49,7 @@ const Home = () => {
         } finally {
             setTimeout(() => {
                 setLoading(false);
-            }, 2000);
+            }, 1500);
         }
     };
 
@@ -75,10 +77,13 @@ const Home = () => {
             {!loading && <h1 className={styles.heading}>Weather App</h1>}
 
             <form onSubmit={handleSearch} className={styles.form}>
-                <input type="text" className={styles.inputBox} placeholder="Enter location"
-                    value={location} onChange={(e) => setLocation(e.target.value)}
-                />
-                <button type="submit" className={styles.searchBtn}>Search</button>
+                <div className={styles.inputContainer}>
+                    <FaSearch className={styles.searchIcon} onClick={handleSearch}/>
+                    <input type="text" className={styles.inputBox} placeholder="Enter location"
+                        value={location} onChange={(e) => setLocation(e.target.value)}
+                    />
+                </div>
+                <Link to="/login" className={styles.loginBtn}>Login</Link>
             </form>
 
             {loading && (

@@ -1,0 +1,104 @@
+.loginContainer, .registerContainer {
+    width: 100%;
+    max-width: 400px;
+    margin: auto;
+    padding: 20px;
+    padding-top: 40px;
+    padding-bottom: 40px;
+    background-color: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.loginContainer {
+    margin-top: 190px;
+}
+
+.registerContainer {
+    margin-top: 160px;
+}
+
+.loginHeader, .registerHeader {
+    font-size: 28px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 30px;
+    color: #333333;
+}
+
+.loginForm, .registerForm {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
+
+.inputField {
+    padding: 12px 15px;
+    font-size: 16px;
+    width: 85%;
+    border-radius: 15px;
+    border: 1px solid #dcdcdc;
+    outline: none;
+    transition: all 0.3s ease;
+    background-color: #f9f9f9;
+}
+
+.inputField:focus {
+    border-color: #007bff;
+    background-color: #ffffff;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+}
+
+.loginButton, .registerBtn {
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.loginButton:hover, registerBtn:hover {
+    background-color: #0056b3;
+}
+
+.errMsg {
+    color: #ffdddd;
+    background-color: #ff4444; 
+    padding-top: 8px; 
+    padding-bottom: 8px; 
+    border-radius: 15px; 
+    margin-top: 15px; 
+    text-align: center;
+    animation: fadeIn 0.9s ease, shake 0.5s ease; 
+}
+
+.account {
+    text-align: center;
+    margin-top: 10px;
+
+    a {
+        text-decoration: none;
+        color: #007bff;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1; 
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); } 
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); } 
+    75% { transform: translateX(-5px); }
+}

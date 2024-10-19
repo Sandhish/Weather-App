@@ -6,9 +6,9 @@ const ErrorPage = ({ show, onClose }) => {
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modal}>
-        <h2>Error!</h2>
+        <h2 className={styles.modelHeading}>Error!</h2>
         <p>Invalid location entered. Please try again.</p>
-        <button onClick={onClose}>Okay</button>
+        <button className={styles.modelBtn} onClick={onClose}>Okay</button>
       </div>
     </div>
   );

@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 .env
+.vite
+.vite/deps_temp_8c04378e

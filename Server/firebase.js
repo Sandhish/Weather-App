@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics"; 
 
 const firebaseConfig = {
-  
+
 };
 
 const app = initializeApp(firebaseConfig);

@@ -60,7 +60,7 @@ const UserPage = () => {
             const condition = currentWeather.data.current.condition.text;
             const temperature = currentWeather.data.current.temp_c;
 
-            if (temperature >= 30 || temperature < 11 || condition.includes('Storm') || condition.includes('Heavy Rain')) {
+            if (temperature > 35 || temperature < 11 || condition.includes('Storm') || condition.includes('Heavy Rain')) {
                 await axios.post('http://localhost:5000/send-email', {
                     userEmail,
                     weatherCondition: condition,

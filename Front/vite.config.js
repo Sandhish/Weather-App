@@ -10,9 +10,4 @@ export default defineConfig({
       'firebase/analytics',
     ],
   },
-  build: {
-    rollupOptions: {
-      external: [],
-    },
-  },
 });

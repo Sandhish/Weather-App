@@ -1,4 +1,3 @@
-// Import necessary packages
 const express = require('express');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
@@ -6,7 +5,8 @@ const cors = require('cors');
 require('dotenv').config();
 const admin = require('firebase-admin');
 const serviceAccount = require('./weather-api.json');
-let lastFetchTime = Date.now();
+
+let lastFetchTime = 0;
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -29,6 +29,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendEmail = async (userEmail, weatherCondition, location) => {
+    console.log(`Preparing to send email to: ${userEmail}`);
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: userEmail,
@@ -55,8 +56,12 @@ const checkWeather = async (userEmail, favoriteLocation) => {
 
             const extremeConditions = ['Thunderstorm', 'Heavy Rain', 'Heatwave', 'Snowstorm', 'Tornado'];
 
-            if (tempC > 30 || tempC < 11 || extremeConditions.includes(condition)) {
+            console.log(`Current condition: ${condition}, Temperature: ${tempC}°C`);
+
+            if (tempC > 35 || tempC < 11 || extremeConditions.includes(condition)) {
                 await sendEmail(userEmail, condition, favoriteLocation);
+            } else {
+                console.log(`No extreme conditions for ${favoriteLocation}.`);
             }
         } else {
             console.error("Weather data is not valid:", weatherData);
@@ -68,54 +73,58 @@ const checkWeather = async (userEmail, favoriteLocation) => {
 
 const fetchUsersAndCheckWeather = async () => {
     const currentTime = Date.now();
-    if (currentTime - lastFetchTime < 3600000) {
+
+    if (currentTime - lastFetchTime < (5 * 60 * 60 * 1000)) {
         console.log("Skipping weather check to avoid quota issues.");
         return;
     }
 
-    lastFetchTime = currentTime;
     try {
-        const usersSnapshot = await db.collection('WeatherApi').get();
-        usersSnapshot.forEach(async (doc) => {
-            const userData = doc.data();
-            const userEmail = userData.email;  
-            const favoriteLocation = userData.favoriteLocation; 
+        const usersSnapshot = await admin.auth().listUsers();
 
-            if (userEmail && favoriteLocation) {
-                console.log(`Checking weather for ${userEmail} in ${favoriteLocation}`);
-                await checkWeather(userEmail, favoriteLocation);
+        if (usersSnapshot.users.length > 0) {
+            lastFetchTime = currentTime;
+            console.log(`Current time: ${currentTime}, Last fetch time: ${lastFetchTime}`);
+
+            const checkPromises = [];
+
+            for (const user of usersSnapshot.users) {
+                const uid = user.uid;
+                const userDoc = await db.collection('WeatherApi').doc(uid).get();
+
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    const favoriteLocation = userData.favoriteLocation;
+                    console.log(userData);
+
+                    if (favoriteLocation) {
+                        console.log(`Checking weather for UID ${uid} in ${favoriteLocation}`);
+                        checkPromises.push(checkWeather(user.email, favoriteLocation));
+                    } else {
+                        console.log(`Skipping weather check for UID ${uid} due to empty favorite location.`);
+                    }
+                } else {
+                    console.log(`No favorite location found for UID ${uid}.`);
+                }
             }
-        });
+
+            await Promise.all(checkPromises);
+        } else {
+            console.log("No users found in the database.");
+        }
     } catch (error) {
-        console.error('Error fetching users from Firestore:', error);
         if (error.code === 'RESOURCE_EXHAUSTED') {
-            console.warn('Quota exceeded. Adjusting fetch frequency may be necessary.');
+            console.warn('Quota exceeded. Pausing weather checks for now.');
+            setTimeout(fetchUsersAndCheckWeather, 3600000);
+        } else {
+            console.error('Error fetching users from Firebase Authentication:', error);
         }
     }
 };
 
 setInterval(() => {
     fetchUsersAndCheckWeather();
-}, 600000);
-
-app.post('/send-email', async (req, res) => {
-    const { userEmail, weatherCondition, location } = req.body;
-
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: userEmail,
-        subject: `Weather Alert: Extreme Conditions in ${location}`,
-        text: `There are extreme ${weatherCondition} conditions in your favorite location, ${location}. Stay safe!`,
-    };
-
-    try {
-        await transporter.sendMail(mailOptions);
-        res.status(200).send({ message: 'Email sent successfully!' });
-    } catch (error) {
-        console.error('Error sending email:', error);
-        res.status(500).send({ message: 'Error sending email' });
-    }
-});
+}, 5 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

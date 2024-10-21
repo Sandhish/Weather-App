@@ -16,7 +16,7 @@ function App() {
                     <Route path="/register" element={<Register />} />
                     <Route path="/user" element={
                         <ProtectedRoute>
-                            <UserPage /> 
+                            <UserPage />
                         </ProtectedRoute>
                     } />
                 </Routes>

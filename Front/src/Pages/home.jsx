@@ -4,7 +4,7 @@ import { WeatherCard } from './WeatherCard';
 import { ForecastCard } from './Forecast';
 import styles from '../Pages/Styles.module.css';
 import { ErrorPage } from './ErrorPage';
-import { FaSearch } from 'react-icons/fa'; 
+import { FaSearch } from 'react-icons/fa';
 import { Link } from "react-router-dom";
 
 const Home = () => {
@@ -78,7 +78,7 @@ const Home = () => {
 
             <form onSubmit={handleSearch} className={styles.form}>
                 <div className={styles.inputContainer}>
-                    <FaSearch className={styles.searchIcon} onClick={handleSearch}/>
+                    <FaSearch className={styles.searchIcon} onClick={handleSearch} />
                     <input type="text" className={styles.inputBox} placeholder="Enter location"
                         value={location} onChange={(e) => setLocation(e.target.value)}
                     />

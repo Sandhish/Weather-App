@@ -25,6 +25,10 @@ const Register = () => {
         }
     };
 
+    const handleRegisterClick = () => {
+        navigate('/login');
+    };
+
     return (
         <div className={styles.registerContainer}>
             <p className={styles.registerHeader}>Register</p>
@@ -37,7 +41,8 @@ const Register = () => {
                     onChange={(e) => setPassword(e.target.value)} required />
                 <button type="submit" className={styles.registerBtn}>Register</button>
             </form>
-            <p className={styles.account}>Already have an account? <a href="/login">Login</a></p>
+            <p className={styles.account}>Already have an account? <span onClick={handleRegisterClick}>Login</span>
+            </p>
             {error && <p className={styles.errMsg}>{error}</p>}
         </div>
     );

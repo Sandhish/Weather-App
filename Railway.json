@@ -1,0 +1,17 @@
+{
+  "builds": [
+    {
+      "src": "Server/",
+      "use": "@railway/nodejs"
+    }
+  ],
+  "deploy": {
+    "startCommand": "node server.js",
+    "buildCommand": "npm install",
+    "env": {
+      "WEATHER_API_KEY": "@weather_api_key",
+      "EMAIL_USER": "@email_user",
+      "EMAIL_PASS": "@email_pass"
+    }
+  }
+}

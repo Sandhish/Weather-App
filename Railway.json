@@ -8,11 +8,11 @@
   "deploy": {
     "startCommand": "node Server/server.js",
     "buildCommand": "npm install",
-    "env": {
+    "env": {  
       "WEATHER_API_KEY": "@weather_api_key",
       "EMAIL_USER": "@email_user",
       "EMAIL_PASS": "@email_pass",
-      "FIREBASE_PRIVATE_KEY": "@firebase_private_key"
+      "FIREBASE_PRIVATE_KEY": "@FIREBASE_PRIVATE_KEY_ID"
     }
   }
 }

@@ -12,7 +12,12 @@
       "WEATHER_API_KEY": "@weather_api_key",
       "EMAIL_USER": "@email_user",
       "EMAIL_PASS": "@email_pass",
-      "FIREBASE_PRIVATE_KEY": "@FIREBASE_PRIVATE_KEY"
+      "FIREBASE_PRIVATE_KEY": "@FIREBASE_PRIVATE_KEY",
+      "FIREBASE_TYPE": "service_account",
+      "FIREBASE_PROJECT_ID": "@FIREBASE_PROJECT_ID", 
+      "FIREBASE_PRIVATE_KEY_ID": "@FIREBASE_PRIVATE_KEY_ID", 
+      "FIREBASE_CLIENT_EMAIL": "@FIREBASE_CLIENT_EMAIL",
+      "FIREBASE_CLIENT_ID": "@FIREBASE_CLIENT_ID"
     }
   }
 }

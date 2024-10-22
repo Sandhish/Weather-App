@@ -4,6 +4,7 @@ const axios = require('axios');
 const cors = require('cors');
 require('dotenv').config();
 const admin = require('firebase-admin');
+
 const privateKey = `-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC3P2zehzxaUKcO
 h3lm52Yg3U1pX6zjyNGlKHe+x8+usUtK1W//O4/roj2gBtm39Qejn6UM2nFOdjRs
@@ -32,6 +33,7 @@ gUCM7sB1ddEM7qxF1HIwgDB4tjzsoSPNLVkFonJL+9s8lx3y8EBnEhJuuFPXNOog
 OufiUQx058BEsBYbWQxJP9zg6WBbJH9YS9RCrSD7uRLflW6I+2Iwe5trgj7eXSGi
 MFWBs2gsFXFHomjhbT3POco=
 -----END PRIVATE KEY-----`;
+
 admin.initializeApp({
     credential: admin.credential.cert({
         "type": process.env.FIREBASE_TYPE,
@@ -64,7 +66,6 @@ const transporter = nodemailer.createTransport({
         pass: process.env.EMAIL_PASS,
     },
 });
-console.log(process.env.FIREBASE_PRIVATE_KEY);
 const sendEmail = async (userEmail, weatherCondition, location) => {
     console.log(`Preparing to send email to: ${userEmail}`);
     const mailOptions = {
@@ -161,7 +162,7 @@ const fetchUsersAndCheckWeather = async () => {
 
 setInterval(() => {
     fetchUsersAndCheckWeather();
-}, 5 * 60 * 60 * 1000);
+},  10000);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -55,20 +55,6 @@ const UserPage = () => {
 
             setHistoryData([historyDay2.data.forecast.forecastday[0], historyDay1.data.forecast.forecastday[0]]);
             setLocation('');
-
-            const userEmail = currentUser.email;
-            const condition = currentWeather.data.current.condition.text;
-            const temperature = currentWeather.data.current.temp_c;
-
-            if (temperature > 35 || temperature < 11 || condition.includes('Storm') || condition.includes('Heavy Rain')) {
-                await axios.post('http://localhost:5000/send-email', {
-                    userEmail,
-                    weatherCondition: condition,
-                    location: favoriteLocation,
-                });
-                toast.success('Weather alert sent to your email!');
-            }
-
         } catch (error) {
             console.error('Error fetching weather data:', error);
             if (error.response && error.response.status === 400) {

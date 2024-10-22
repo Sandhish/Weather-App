@@ -6,7 +6,7 @@
     }
   ],
   "deploy": {
-    "startCommand": "node server.js",
+    "startCommand": "node Server/server.js",
     "buildCommand": "npm install",
     "env": {
       "WEATHER_API_KEY": "@weather_api_key",

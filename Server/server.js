@@ -66,6 +66,7 @@ const transporter = nodemailer.createTransport({
         pass: process.env.EMAIL_PASS,
     },
 });
+
 const sendEmail = async (userEmail, weatherCondition, location) => {
     console.log(`Preparing to send email to: ${userEmail}`);
     const mailOptions = {
@@ -83,7 +84,7 @@ const sendEmail = async (userEmail, weatherCondition, location) => {
     }
 };
 
-const checkWeather = async (userEmail, favoriteLocation) => {
+const checkWeather = async (userEmail, favoriteLocation, minThreshold, maxThreshold) => {
     try {
         const response = await axios.get(`https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${favoriteLocation}`);
         const weatherData = response.data;
@@ -94,9 +95,9 @@ const checkWeather = async (userEmail, favoriteLocation) => {
 
             const extremeConditions = ['Thunderstorm', 'Heavy Rain', 'Heatwave', 'Snowstorm', 'Tornado'];
 
-            console.log(`Current condition: ${condition}, Temperature: ${tempC}°C`);
+            console.log(`Current condition: ${condition}, Temperature: ${tempC}°C for location: ${favoriteLocation}`);
 
-            if (tempC > 35 || tempC < 11 || extremeConditions.includes(condition)) {
+            if (tempC > maxThreshold || tempC < minThreshold || extremeConditions.includes(condition)) {
                 await sendEmail(userEmail, condition, favoriteLocation);
             } else {
                 console.log(`No extreme conditions for ${favoriteLocation}.`);
@@ -112,7 +113,7 @@ const checkWeather = async (userEmail, favoriteLocation) => {
 const fetchUsersAndCheckWeather = async () => {
     const currentTime = Date.now();
 
-    if (currentTime - lastFetchTime < (5 * 60 * 60 * 1000)) {
+    if (currentTime - lastFetchTime < (24 * 60 * 60 * 1000)) {
         console.log("Skipping weather check to avoid quota issues.");
         return;
     }
@@ -132,12 +133,15 @@ const fetchUsersAndCheckWeather = async () => {
 
                 if (userDoc.exists) {
                     const userData = userDoc.data();
-                    const favoriteLocation = userData.favoriteLocation;
-                    console.log(userData);
+                    const favoriteLocations = userData.favoriteLocations || [];
 
-                    if (favoriteLocation) {
-                        console.log(`Checking weather for UID ${uid} in ${favoriteLocation}`);
-                        checkPromises.push(checkWeather(user.email, favoriteLocation));
+                    if (favoriteLocations.length > 0) {
+                        for (const locationObj of favoriteLocations) {
+                            const { location, minThreshold, maxThreshold } = locationObj;
+                            console.log(`Checking weather for UID ${uid} in "${location}" with thresholds: Min=${minThreshold}°C, Max=${maxThreshold}°C`);
+
+                            checkPromises.push(checkWeather(user.email, location, minThreshold, maxThreshold));
+                        }
                     } else {
                         console.log(`Skipping weather check for UID ${uid} due to empty favorite location.`);
                     }
@@ -145,7 +149,6 @@ const fetchUsersAndCheckWeather = async () => {
                     console.log(`No favorite location found for UID ${uid}.`);
                 }
             }
-
             await Promise.all(checkPromises);
         } else {
             console.log("No users found in the database.");
@@ -162,7 +165,7 @@ const fetchUsersAndCheckWeather = async () => {
 
 setInterval(() => {
     fetchUsersAndCheckWeather();
-},  5 * 60 * 60 * 1000);
+}, 24 * 60 * 60 * 1000);
 
 const PORT = 5000;
 app.listen(PORT, () => {

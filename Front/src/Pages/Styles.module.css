@@ -503,3 +503,32 @@
 .userPageButton:hover {
   background-color: #0667cf
 }
+
+.favLocDesc{
+  margin-top: 13px;
+  margin-bottom: 10px;
+}
+.plusIcon {
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.favAddButton{
+  background-color: #4a90e2;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  width: 100%;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+  margin-top: 15px;
+}
+
+.favAddButton:hover {
+  background-color: #0667cf;
+}

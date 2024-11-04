@@ -4,11 +4,11 @@ import { WeatherCard } from './WeatherCard';
 import { ForecastCard } from './Forecast';
 import styles from '../Pages/Styles.module.css';
 import { ErrorPage } from './ErrorPage';
-import { FaSearch, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaPlus } from 'react-icons/fa';
 import { MdAccountCircle } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './Auth/AuthContext';
-import { getFirestore, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
 import { TbLogout } from "react-icons/tb";
 
@@ -20,27 +20,20 @@ const UserPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [panelOpen, setPanelOpen] = useState(false);
-    const [favoriteLocation, setFavoriteLocation] = useState('');
-    const [showModal, setShowModal] = useState(false);
-    const [modalMessage, setModalMessage] = useState('');
-    const [showFavoriteDetails, setShowFavoriteDetails] = useState(false);
-    const [showForecastDetails, setShowForecastDetails] = useState(false);
+    const [favoriteLocations, setFavoriteLocations] = useState([]);
+    const [newFavorite, setNewFavorite] = useState('');
+    const [showFavoriteInput, setShowFavoriteInput] = useState(false);
+    const [minThreshold, setMinThreshold] = useState('');
+    const [maxThreshold, setMaxThreshold] = useState('');
     const navigate = useNavigate();
     const { currentUser, logout } = useAuth();
     const firestore = getFirestore();
 
     const apiKey = import.meta.env.VITE_API_KEY;
 
-    const getFormattedDate = (daysOffset) => {
-        const date = new Date();
-        date.setDate(date.getDate() + daysOffset);
-        return date.toISOString().split('T')[0];
-    };
-
     const fetchWeather = async (loc) => {
         setLoading(true);
         setError(false);
-
         try {
             const currentWeather = await axios.get(`https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${loc}`);
             const forecast = await axios.get(`https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${loc}&days=3`);
@@ -67,6 +60,12 @@ const UserPage = () => {
         }
     };
 
+    const getFormattedDate = (daysOffset) => {
+        const date = new Date();
+        date.setDate(date.getDate() + daysOffset);
+        return date.toISOString().split('T')[0];
+    };
+
     const handleSearch = (e) => {
         e.preventDefault();
         if (location) {
@@ -74,15 +73,8 @@ const UserPage = () => {
         }
     };
 
-    const handlePanel = () => {
-        setPanelOpen(!panelOpen);
-    };
-
-    const handleCloseModal = () => {
-        setError(false);
-        setShowModal(false);
-    };
-
+    const handlePanel = () => setPanelOpen(!panelOpen);
+    const handleCloseModal = () => setError(false);
     const handleLogout = async () => {
         try {
             await logout();
@@ -100,93 +92,84 @@ const UserPage = () => {
         });
     };
 
-    const fetchFavoriteLocation = async () => {
+    const fetchFavoriteLocations = async () => {
+        if (!currentUser) return;
+
         try {
             const userDoc = doc(firestore, 'WeatherApi', currentUser.uid);
             const docSnapshot = await getDoc(userDoc);
             if (docSnapshot.exists()) {
                 const userData = docSnapshot.data();
-                setFavoriteLocation(userData.favoriteLocation || '');
+                setFavoriteLocations(userData.favoriteLocations || []);
             }
         } catch (error) {
-            console.error("Error fetching favorite location:", error);
-            setFavoriteLocation('');
+            console.error("Error fetching favorite locations:", error);
         }
     };
 
-    const validateLocation = async (loc) => {
-        try {
-            await axios.get(`https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${loc}`);
-            return true;
-        } catch {
-            return false;
-        }
-    };
-
-    const saveFavoriteLocation = async (loc) => {
-        const userDoc = doc(firestore, 'WeatherApi', currentUser.uid);
-        await setDoc(userDoc, { favoriteLocation: loc });
-        toast.success("Favorite location saved successfully.");
-        setShowFavoriteDetails(true);
-    };
-
-    const deleteFavoriteLocation = async () => {
-        const userDoc = doc(firestore, 'WeatherApi', currentUser.uid);
-        try {
-            await deleteDoc(userDoc);
-            resetAfterDelete();
-            toast.success("Favorite location deleted successfully.");
-            handleCurrentLocation();
-        } catch (error) {
-            toast.error("Error deleting favorite location. Please try again.");
-            console.error("Error deleting favorite location:", error);
-        }
-    };
-
-    const resetAfterDelete = () => {
-        setFavoriteLocation('');
-        setLocation('');
-        setShowFavoriteDetails(false);
-        setShowForecastDetails(false);
+    const handleAddFavoriteField = () => {
+        setShowFavoriteInput((prev) => !prev);
+        setNewFavorite('');
+        setMinThreshold('');
+        setMaxThreshold('');
     };
 
     const handleSaveFavoriteLocation = async () => {
-        if (location.trim()) {
-            const isValidLocation = await validateLocation(location);
-            if (isValidLocation) {
-                try {
-                    await saveFavoriteLocation(location);
-                    setFavoriteLocation(location);
-                    setLocation('');
-                    setShowFavoriteDetails(true);
-                    fetchWeather(location);
-                } catch (error) {
-                    console.error("Error saving favorite location:", error);
-                    toast.error("Failed to save favorite location. Please try again.");
-                }
-            } else {
-                setError(true);
-            }
+        if (!newFavorite.trim() || !currentUser) return;
+
+        if (favoriteLocations.some(fav => fav.location === newFavorite)) {
+            toast.error("Location already in favorites.");
+            return;
+        }
+
+        const userDoc = doc(firestore, 'WeatherApi', currentUser.uid);
+
+        try {
+            const docSnapshot = await getDoc(userDoc);
+            const existingFavorites = docSnapshot.exists() ? docSnapshot.data().favoriteLocations || [] : [];
+
+            const updatedFavorites = [
+                ...existingFavorites,
+                { location: newFavorite, minThreshold: Number(minThreshold), maxThreshold: Number(maxThreshold) }
+            ];
+            await setDoc(userDoc, { favoriteLocations: updatedFavorites }, { merge: true });
+
+            setFavoriteLocations(updatedFavorites);
+            setNewFavorite('');
+            setMinThreshold('');
+            setMaxThreshold('');
+            setShowFavoriteInput(false);
+
+            toast.success("Favorite location saved successfully.");
+            await fetchWeather(newFavorite);
+        } catch (error) {
+            console.error("Error saving favorite location:", error);
+            toast.error("Failed to save favorite location. Please try again.");
         }
     };
 
-    const handleShowForecastDetails = async () => {
-        if (favoriteLocation) {
-            const isValidLocation = await validateLocation(favoriteLocation);
-            if (isValidLocation) {
-                fetchWeather(favoriteLocation);
-                setShowForecastDetails(true);
-                setPanelOpen(false);
-            } else {
-                setError(true);
-            }
+    const handleDeleteFavoriteLocation = async (locationToDelete) => {
+        const updatedFavorites = favoriteLocations.filter(fav => fav.location !== locationToDelete);
+        const userDoc = doc(firestore, 'WeatherApi', currentUser.uid);
+
+        try {
+            await setDoc(userDoc, { favoriteLocations: updatedFavorites });
+            setFavoriteLocations(updatedFavorites);
+            toast.success("Favorite location deleted successfully.");
+        } catch (error) {
+            console.error("Error deleting favorite location:", error);
+            toast.error("Error deleting favorite location. Please try again.");
         }
     };
+
+    const handleShowForecastDetails = (loc) => fetchWeather(loc);
 
     useEffect(() => {
-        handleCurrentLocation();
-        fetchFavoriteLocation();
-    }, []);
+        if (currentUser) {
+            fetchFavoriteLocations();
+            handleCurrentLocation();
+        }
+    }, [currentUser]);
 
     return (
         <div className={styles.Main}>
@@ -207,28 +190,19 @@ const UserPage = () => {
             {loading && (
                 <div className={styles.spinnerOverlay}>
                     <div className={styles.loader}>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
+                        <div></div><div></div><div></div><div></div>
                     </div>
                 </div>
             )}
 
-            {!loading && error && (
-                <ErrorPage show={error} onClose={handleCloseModal} />
-            )}
+            {error && <ErrorPage show={error} onClose={handleCloseModal} />}
 
             {!loading && !error && weatherData && (
                 <>
                     <WeatherCard data={weatherData} />
                     <div className={styles.forecastContainer}>
-                        {historyData && historyData.map((day, index) => (
-                            <ForecastCard key={index} data={day} />
-                        ))}
-                        {forecastData && forecastData.slice(0, 3).map((day, index) => (
-                            <ForecastCard key={index} data={day} />
-                        ))}
+                        {historyData.map((day, index) => <ForecastCard key={index} data={day} />)}
+                        {forecastData.slice(0, 3).map((day, index) => <ForecastCard key={index} data={day} />)}
                     </div>
                 </>
             )}
@@ -241,41 +215,48 @@ const UserPage = () => {
                         <MdAccountCircle className={styles.accIconCenter} />
                         <p className={styles.accName}><strong>Email:</strong> {currentUser.email}</p>
                     </div>
-                    <div className={styles.accInfo}>
-                        <button className={styles.userPageButton} onClick={handleCurrentLocation}>Current Location</button>
-                    </div>
+                    <button className={styles.userPageButton} onClick={handleCurrentLocation}>Current Location</button>
 
                     <div className={styles.favoriteLocationSection}>
-                        {favoriteLocation ? (
-                            <>
-                                <button className={styles.userPageButton} onClick={handleShowForecastDetails}>Favorite Location</button>
-                                <button className={styles.userPageButton} onClick={deleteFavoriteLocation}>Delete Favorite Location</button>
-                            </>
-                        ) : (
-                            <>
-                                <input type="text" className={styles.favInputBox} placeholder="Enter favorite location"
-                                    value={location} onChange={(e) => setLocation(e.target.value)}
-                                />
-                                <button className={styles.userPageButton} onClick={handleSaveFavoriteLocation}>Save Favorite Location</button>
-                            </>
-                        )}
-                    </div>
-                    <div className={styles.accInfo}>
-                        <button className={styles.logoutButton} onClick={handleLogout}>Logout<TbLogout className={styles.logoutIcon} /></button>
-                    </div>
-                </div>
-            )}
+                        <p className={styles.favLocDesc}>Your Favorite Locations:</p>
+                        {favoriteLocations.map((fav, index) => (
+                            <div key={index} className={styles.favoriteLocationItem}>
+                                <button onClick={() => handleShowForecastDetails(fav.location)}>
+                                    {fav.location} (Min: {fav.minThreshold}°C, Max: {fav.maxThreshold}°C)
+                                </button>
+                                <button onClick={() => handleDeleteFavoriteLocation(fav.location)}>Delete</button>
+                            </div>
+                        ))}
 
-            {showModal && (
-                <div className={styles.modal}>
-                    <div className={styles.modalContent}>
-                        <h3>{modalMessage}</h3>
-                        <button onClick={handleCloseModal}>Close</button>
+                        {showFavoriteInput && (
+                            <div className={styles.newFavoriteContainer}>
+                                <input type="text" className={styles.favInputBox} placeholder="Enter favorite location"
+                                    value={newFavorite} onChange={(e) => setNewFavorite(e.target.value)}
+                                />
+                                <input type="number" className={styles.favInputBox} placeholder="Min Threshold"
+                                    value={minThreshold} onChange={(e) => setMinThreshold(e.target.value)}
+                                />
+                                <input type="number" className={styles.favInputBox} placeholder="Max Threshold"
+                                    value={maxThreshold} onChange={(e) => setMaxThreshold(e.target.value)}
+                                />
+                                <button className={styles.userPageButton} onClick={handleSaveFavoriteLocation}>
+                                    Save Favorite Location
+                                </button>
+                            </div>
+                        )}
+
+                        <button className={styles.favAddButton} onClick={handleAddFavoriteField}>
+                            <FaPlus className={styles.plusIcon} /> Add Favorite Location
+                        </button>
                     </div>
+
+                    <button className={styles.logoutButton} onClick={handleLogout}>
+                        <TbLogout className={styles.logoutIcon} /> Logout
+                    </button>
                 </div>
             )}
         </div>
     );
 };
 
-export { UserPage };
+export  {UserPage};

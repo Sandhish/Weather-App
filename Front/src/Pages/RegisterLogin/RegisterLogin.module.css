@@ -32,7 +32,8 @@ body {
     margin-top: 160px;
 }
 
-input.registerInputField::placeholder,.loginInputField::placeholder {
+input.registerInputField::placeholder,
+.loginInputField::placeholder {
     color: white;
 }
 
@@ -57,7 +58,8 @@ input.registerInputField::placeholder,.loginInputField::placeholder {
     padding: 0 20px;
 }
 
-.loginInputField,.registerInputField {
+.loginInputField,
+.registerInputField {
     padding: 12px 15px;
     font-size: 16px;
     width: 100%;
@@ -68,12 +70,14 @@ input.registerInputField::placeholder,.loginInputField::placeholder {
     background-color: transparent;
 }
 
-input.loginInputField,.registerInputField {
+input.loginInputField,
+.registerInputField {
     color: white;
     letter-spacing: 1px;
 }
 
-.registerInputField:focus,.loginInputField:focus {
+.registerInputField:focus,
+.loginInputField:focus {
     border-color: #fff;
     box-shadow: 0 0 8px rgba(242, 244, 246, 0.8);
 }

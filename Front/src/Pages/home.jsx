@@ -6,6 +6,7 @@ import styles from '../Pages/Styles.module.css';
 import { ErrorPage } from './ErrorPage';
 import { FaSearch } from 'react-icons/fa';
 import { Link } from "react-router-dom";
+import { BsFillInfoCircleFill } from "react-icons/bs";
 
 const Home = () => {
     const [location, setLocation] = useState('');
@@ -14,6 +15,7 @@ const Home = () => {
     const [historyData, setHistoryData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
+    const [showInfoModal, setShowInfoModal] = useState(false);
 
     const apiKey = import.meta.env.VITE_API_KEY;
 
@@ -60,9 +62,9 @@ const Home = () => {
         }
     };
 
-    const handleCloseModal = () => {
-        setError(false);
-    };
+    const handleCloseModal = () => setError(false);
+
+    const handleInfo = () => setShowInfoModal(!showInfoModal);
 
     useEffect(() => {
         navigator.geolocation.getCurrentPosition((position) => {
@@ -75,13 +77,13 @@ const Home = () => {
         <div className={styles.Main}>
             <img src="/R.jpeg" alt="background" className={styles.backgroundImage} />
             {!loading && <h1 className={styles.heading}>Weather App</h1>}
-
             <form onSubmit={handleSearch} className={styles.form}>
                 <div className={styles.inputContainer}>
                     <FaSearch className={styles.searchIcon} onClick={handleSearch} />
                     <input type="text" className={styles.inputBox} placeholder="Enter location"
                         value={location} onChange={(e) => setLocation(e.target.value)}
                     />
+                    <BsFillInfoCircleFill className={styles.infoIcon} onClick={handleInfo} />
                 </div>
                 <Link to="/login" className={styles.loginBtn}>Login</Link>
             </form>
@@ -114,6 +116,31 @@ const Home = () => {
                         ))}
                     </div>
                 </>
+            )}
+
+            {showInfoModal && (
+                <div className={styles.infoModal}>
+                    <div className={styles.infoModalContent}>
+                        <span className={styles.closeButton} onClick={handleInfo}>&times;</span>
+                        <p className={styles.infoContent}>
+                            <h2>Welcome to the Weather App!</h2>
+                            <p>
+                                With this app, you can easily check the current weather and forecast for any location. To access advanced features, consider logging in.
+                            </p>
+                            <p>
+                                As a registered user, you can:
+                            </p>
+                            <ul>
+                                <li><strong>Save Favorite Locations:</strong> Store multiple favorite locations for quick access to their weather details.</li>
+                                <li><strong>Set Weather Alerts:</strong> Define custom minimum and maximum temperature thresholds for each saved location.</li>
+                                <li><strong>Email Notifications:</strong> The app will monitor your saved locations every 5 hours. If the weather in any location goes above or below your set threshold, an email alert will be sent to notify you.</li>
+                            </ul>
+                            <p>
+                                To start using these features, please <Link to="/login" className={styles.infoLogin}>Log in</Link> or create an account. Enjoy a personalized weather experience!
+                            </p>
+                        </p>
+                    </div>
+                </div>
             )}
         </div>
     );

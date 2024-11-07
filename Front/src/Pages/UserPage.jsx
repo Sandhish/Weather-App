@@ -5,7 +5,7 @@ import { ForecastCard } from './Forecast';
 import styles from '../Pages/Styles.module.css';
 import { ErrorPage } from './ErrorPage';
 import { FaSearch, FaTimes, FaPlus } from 'react-icons/fa';
-import { MdAccountCircle } from 'react-icons/md';
+import { MdAccountCircle, MdDeleteForever } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './Auth/AuthContext';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
@@ -109,22 +109,28 @@ const UserPage = () => {
 
     const handleAddFavoriteField = () => {
         setShowFavoriteInput((prev) => !prev);
-        setNewFavorite('');
-        setMinThreshold('');
-        setMaxThreshold('');
+        if (showFavoriteInput) {
+            setNewFavorite('');
+            setMinThreshold('');
+            setMaxThreshold('');
+        }
     };
 
     const handleSaveFavoriteLocation = async () => {
-        if (!newFavorite.trim() || !currentUser) return;
-
-        if (favoriteLocations.some(fav => fav.location === newFavorite)) {
-            toast.error("Location already in favorites.");
+        if (!newFavorite.trim() || !minThreshold.trim() || !maxThreshold.trim()) {
+            toast.error("Please fill in all fields (location, min, and max thresholds).");
             return;
         }
 
-        const userDoc = doc(firestore, 'WeatherApi', currentUser.uid);
+        if (favoriteLocations.some(fav => fav.location.toLowerCase() === newFavorite.toLowerCase())) {
+            toast.error("Location is already in favorites.");
+            return;
+        }
 
         try {
+            await axios.get(`https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${newFavorite}`);
+
+            const userDoc = doc(firestore, 'WeatherApi', currentUser.uid);
             const docSnapshot = await getDoc(userDoc);
             const existingFavorites = docSnapshot.exists() ? docSnapshot.data().favoriteLocations || [] : [];
 
@@ -132,6 +138,7 @@ const UserPage = () => {
                 ...existingFavorites,
                 { location: newFavorite, minThreshold: Number(minThreshold), maxThreshold: Number(maxThreshold) }
             ];
+
             await setDoc(userDoc, { favoriteLocations: updatedFavorites }, { merge: true });
 
             setFavoriteLocations(updatedFavorites);
@@ -143,8 +150,12 @@ const UserPage = () => {
             toast.success("Favorite location saved successfully.");
             await fetchWeather(newFavorite);
         } catch (error) {
-            console.error("Error saving favorite location:", error);
-            toast.error("Failed to save favorite location. Please try again.");
+            console.error("Error validating or saving favorite location:", error);
+            if (error.response && error.response.status === 400) {
+                toast.error("Location not found. Please enter a valid location.");
+            } else {
+                toast.error("Failed to save favorite location. Please try again.");
+            }
         }
     };
 
@@ -218,27 +229,43 @@ const UserPage = () => {
                     <button className={styles.userPageButton} onClick={handleCurrentLocation}>Current Location</button>
 
                     <div className={styles.favoriteLocationSection}>
-                        <p className={styles.favLocDesc}>Your Favorite Locations:</p>
-                        {favoriteLocations.map((fav, index) => (
-                            <div key={index} className={styles.favoriteLocationItem}>
-                                <button onClick={() => handleShowForecastDetails(fav.location)}>
-                                    {fav.location} (Min: {fav.minThreshold}°C, Max: {fav.maxThreshold}°C)
-                                </button>
-                                <button onClick={() => handleDeleteFavoriteLocation(fav.location)}>Delete</button>
+                        {favoriteLocations.length > 0 && (
+                            <div className={styles.favoriteLocationList}>
+                                <p>Favorite Locations:</p>
+                                <div className={styles.favoriteLocationHeader}>
+                                    <div>Place</div>
+                                    <div>Min</div>
+                                    <div>Max</div>
+                                    <div></div>
+                                </div>
+                                {favoriteLocations.map((fav, index) => (
+                                    <div key={index} className={styles.favoriteLocationItem}>
+                                        <button onClick={() => handleShowForecastDetails(fav.location)}>
+                                            {fav.location}
+                                        </button>
+                                        <div>{fav.minThreshold}°C</div>
+                                        <div>{fav.maxThreshold}°C</div>
+                                        <MdDeleteForever className={styles.deleteIcon} onClick={() => handleDeleteFavoriteLocation(fav.location)} />
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        )}
 
                         {showFavoriteInput && (
                             <div className={styles.newFavoriteContainer}>
-                                <input type="text" className={styles.favInputBox} placeholder="Enter favorite location"
-                                    value={newFavorite} onChange={(e) => setNewFavorite(e.target.value)}
-                                />
-                                <input type="number" className={styles.favInputBox} placeholder="Min Threshold"
-                                    value={minThreshold} onChange={(e) => setMinThreshold(e.target.value)}
-                                />
-                                <input type="number" className={styles.favInputBox} placeholder="Max Threshold"
-                                    value={maxThreshold} onChange={(e) => setMaxThreshold(e.target.value)}
-                                />
+                                <div className={styles.favLocRow}>
+                                    <input type="text" className={styles.favLocAdd} placeholder="Enter favorite location"
+                                        value={newFavorite} onChange={(e) => setNewFavorite(e.target.value)}
+                                    />
+                                </div>
+                                <div className={styles.favLocRow}>
+                                    <input type="number" className={styles.favTempAdd} placeholder="Min Threshold" min={0}
+                                        value={minThreshold} onChange={(e) => setMinThreshold(e.target.value)}
+                                    />
+                                    <input type="number" className={styles.favTempAdd} placeholder="Max Threshold" min={0}
+                                        value={maxThreshold} onChange={(e) => setMaxThreshold(e.target.value)}
+                                    />
+                                </div>
                                 <button className={styles.userPageButton} onClick={handleSaveFavoriteLocation}>
                                     Save Favorite Location
                                 </button>
@@ -246,7 +273,15 @@ const UserPage = () => {
                         )}
 
                         <button className={styles.favAddButton} onClick={handleAddFavoriteField}>
-                            <FaPlus className={styles.plusIcon} /> Add Favorite Location
+                            {showFavoriteInput ? (
+                                <>
+                                    <FaTimes className={styles.plusIcon} /> Close
+                                </>
+                            ) : (
+                                <>
+                                    <FaPlus className={styles.plusIcon} /> Add Favorite Location
+                                </>
+                            )}
                         </button>
                     </div>
 
@@ -259,4 +294,4 @@ const UserPage = () => {
     );
 };
 
-export  {UserPage};
+export { UserPage };

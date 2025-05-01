@@ -13,7 +13,7 @@ const Home = () => {
     const [weatherData, setWeatherData] = useState(null);
     const [forecastData, setForecastData] = useState(null);
     const [historyData, setHistoryData] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); 
     const [error, setError] = useState(false);
     const [showInfoModal, setShowInfoModal] = useState(false);
 
@@ -42,7 +42,10 @@ const Home = () => {
             const historyDay2 = await axios.get(`https://api.weatherapi.com/v1/history.json?key=${apiKey}&q=${loc}&dt=${dayBeforeYesterday}`);
 
             setHistoryData([historyDay2.data.forecast.forecastday[0], historyDay1.data.forecast.forecastday[0]]);
-            setLocation('');
+            
+            if (loc !== location) {
+                setLocation('');
+            }
         } catch (error) {
             console.error('Error fetching weather data:', error);
             if (error.response && error.response.status === 400) {
@@ -67,11 +70,25 @@ const Home = () => {
     const handleInfo = () => setShowInfoModal(!showInfoModal);
 
     useEffect(() => {
-        navigator.geolocation.getCurrentPosition((position) => {
-            const loc = `${position.coords.latitude},${position.coords.longitude}`;
-            fetchWeather(loc);
-        });
-    }, []);
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const loc = `${position.coords.latitude},${position.coords.longitude}`;
+                    fetchWeather(loc);
+                },
+                (error) => {
+                    console.error("Geolocation error:", error);
+                    setLoading(false);
+                    fetchWeather("perundurai");
+                },
+                { timeout: 10000 }
+            );
+        } else {
+            console.error("Geolocation is not supported by this browser.");
+            setLoading(false);
+            fetchWeather("perundurai");
+        }
+    }, []); 
 
     return (
         <div className={styles.Main}>

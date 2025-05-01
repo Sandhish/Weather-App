@@ -84,8 +84,25 @@ const sendEmail = async (userEmail, weatherCondition, location) => {
     }
 };
 
-const checkWeather = async (userEmail, favoriteLocation, minThreshold, maxThreshold) => {
+const isSameDay = (date1, date2) => {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    return d1.getFullYear() === d2.getFullYear() &&
+        d1.getMonth() === d2.getMonth() &&
+        d1.getDate() === d2.getDate();
+};
+
+const checkWeather = async (userEmail, favoriteLocation, minThreshold, maxThreshold, monitorDate) => {
     try {
+        if (monitorDate) {
+            const today = new Date();
+            if (!isSameDay(today, new Date(monitorDate))) {
+                console.log(`Skipping weather check for ${favoriteLocation} - monitoring date is ${monitorDate}, not today.`);
+                return;
+            }
+            console.log(`Processing weather check for ${favoriteLocation} - monitoring date matches today.`);
+        }
+
         const response = await axios.get(`https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${favoriteLocation}`);
         const weatherData = response.data;
 
@@ -113,7 +130,7 @@ const checkWeather = async (userEmail, favoriteLocation, minThreshold, maxThresh
 const fetchUsersAndCheckWeather = async () => {
     const currentTime = Date.now();
 
-    if (currentTime - lastFetchTime < (24 * 60 * 60 * 1000)) {
+    if (currentTime - lastFetchTime < (60 * 60 * 1000)) {
         console.log("Skipping weather check to avoid quota issues.");
         return;
     }
@@ -137,10 +154,15 @@ const fetchUsersAndCheckWeather = async () => {
 
                     if (favoriteLocations.length > 0) {
                         for (const locationObj of favoriteLocations) {
-                            const { location, minThreshold, maxThreshold } = locationObj;
-                            console.log(`Checking weather for UID ${uid} in "${location}" with thresholds: Min=${minThreshold}°C, Max=${maxThreshold}°C`);
+                            const { location, minThreshold, maxThreshold, monitorDate } = locationObj;
 
-                            checkPromises.push(checkWeather(user.email, location, minThreshold, maxThreshold));
+                            if (monitorDate) {
+                                console.log(`Checking weather for UID ${uid} in "${location}" with thresholds: Min=${minThreshold}°C, Max=${maxThreshold}°C, Monitor Date: ${monitorDate}`);
+                            } else {
+                                console.log(`Checking weather for UID ${uid} in "${location}" with thresholds: Min=${minThreshold}°C, Max=${maxThreshold}°C, Continuous monitoring`);
+                            }
+
+                            checkPromises.push(checkWeather(user.email, location, minThreshold, maxThreshold, monitorDate));
                         }
                     } else {
                         console.log(`Skipping weather check for UID ${uid} due to empty favorite location.`);
@@ -165,7 +187,9 @@ const fetchUsersAndCheckWeather = async () => {
 
 setInterval(() => {
     fetchUsersAndCheckWeather();
-}, 24 * 60 * 60 * 1000);
+}, 60 * 60 * 1000);
+
+fetchUsersAndCheckWeather();
 
 const PORT = 5000;
 app.listen(PORT, () => {

@@ -17,7 +17,7 @@ const UserPage = () => {
     const [weatherData, setWeatherData] = useState(null);
     const [forecastData, setForecastData] = useState(null);
     const [historyData, setHistoryData] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); 
     const [error, setError] = useState(false);
     const [panelOpen, setPanelOpen] = useState(false);
     const [favoriteLocations, setFavoriteLocations] = useState([]);
@@ -25,6 +25,7 @@ const UserPage = () => {
     const [showFavoriteInput, setShowFavoriteInput] = useState(false);
     const [minThreshold, setMinThreshold] = useState('');
     const [maxThreshold, setMaxThreshold] = useState('');
+    const [monitorDate, setMonitorDate] = useState('');
     const navigate = useNavigate();
     const { currentUser, logout } = useAuth();
     const firestore = getFirestore();
@@ -47,7 +48,10 @@ const UserPage = () => {
             const historyDay2 = await axios.get(`https://api.weatherapi.com/v1/history.json?key=${apiKey}&q=${loc}&dt=${dayBeforeYesterday}`);
 
             setHistoryData([historyDay2.data.forecast.forecastday[0], historyDay1.data.forecast.forecastday[0]]);
-            setLocation('');
+            
+            if (loc !== location) {
+                setLocation('');
+            }
         } catch (error) {
             console.error('Error fetching weather data:', error);
             if (error.response && error.response.status === 400) {
@@ -85,11 +89,24 @@ const UserPage = () => {
     };
 
     const handleCurrentLocation = () => {
-        navigator.geolocation.getCurrentPosition((position) => {
-            const loc = `${position.coords.latitude},${position.coords.longitude}`;
-            fetchWeather(loc);
-            setPanelOpen(false);
-        });
+        if (navigator.geolocation) {
+            setLoading(true);
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const loc = `${position.coords.latitude},${position.coords.longitude}`;
+                    fetchWeather(loc);
+                    setPanelOpen(false);
+                },
+                (error) => {
+                    console.error("Geolocation error:", error);
+                    setLoading(false);
+                    toast.error("Could not get your location. Please check your browser permissions.");
+                },
+                { timeout: 10000 }
+            );
+        } else {
+            toast.error("Geolocation is not supported by this browser.");
+        }
     };
 
     const fetchFavoriteLocations = async () => {
@@ -113,12 +130,13 @@ const UserPage = () => {
             setNewFavorite('');
             setMinThreshold('');
             setMaxThreshold('');
+            setMonitorDate('');
         }
     };
 
     const handleSaveFavoriteLocation = async () => {
         if (!newFavorite.trim() || !minThreshold.trim() || !maxThreshold.trim()) {
-            toast.error("Please fill in all fields (location, min, and max thresholds).");
+            toast.error("Please fill in all required fields (location, min, and max thresholds).");
             return;
         }
 
@@ -134,10 +152,14 @@ const UserPage = () => {
             const docSnapshot = await getDoc(userDoc);
             const existingFavorites = docSnapshot.exists() ? docSnapshot.data().favoriteLocations || [] : [];
 
-            const updatedFavorites = [
-                ...existingFavorites,
-                { location: newFavorite, minThreshold: Number(minThreshold), maxThreshold: Number(maxThreshold) }
-            ];
+            const newFavoriteLocation = {
+                location: newFavorite,
+                minThreshold: Number(minThreshold),
+                maxThreshold: Number(maxThreshold),
+                monitorDate: monitorDate || null // Save the date or null if not provided
+            };
+
+            const updatedFavorites = [...existingFavorites, newFavoriteLocation];
 
             await setDoc(userDoc, { favoriteLocations: updatedFavorites }, { merge: true });
 
@@ -145,6 +167,7 @@ const UserPage = () => {
             setNewFavorite('');
             setMinThreshold('');
             setMaxThreshold('');
+            setMonitorDate('');
             setShowFavoriteInput(false);
 
             toast.success("Favorite location saved successfully.");
@@ -175,12 +198,47 @@ const UserPage = () => {
 
     const handleShowForecastDetails = (loc) => fetchWeather(loc);
 
+    // Calculate minimum date for the datepicker (tomorrow)
+    const getMinimumDate = () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow.toISOString().split('T')[0];
+    };
+
     useEffect(() => {
         if (currentUser) {
             fetchFavoriteLocations();
-            handleCurrentLocation();
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const loc = `${position.coords.latitude},${position.coords.longitude}`;
+                        fetchWeather(loc);
+                    },
+                    (error) => {
+                        console.error("Geolocation error:", error);
+                        setLoading(false);
+                        fetchWeather("Perundurai");
+                    },
+                    { timeout: 10000 }
+                );
+            } else {
+                console.error("Geolocation is not supported by this browser.");
+                setLoading(false);
+                fetchWeather("Perundurai");
+            }
         }
     }, [currentUser]);
+
+    const formatDate = (dateString) => {
+        if (!dateString) return "Continuous";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    };
 
     return (
         <div className={styles.Main}>
@@ -236,6 +294,7 @@ const UserPage = () => {
                                     <div>Place</div>
                                     <div>Min</div>
                                     <div>Max</div>
+                                    <div>Date</div>
                                     <div></div>
                                 </div>
                                 {favoriteLocations.map((fav, index) => (
@@ -245,6 +304,7 @@ const UserPage = () => {
                                         </button>
                                         <div>{fav.minThreshold}°C</div>
                                         <div>{fav.maxThreshold}°C</div>
+                                        <div>{formatDate(fav.monitorDate)}</div>
                                         <MdDeleteForever className={styles.deleteIcon} onClick={() => handleDeleteFavoriteLocation(fav.location)} />
                                     </div>
                                 ))}
@@ -266,6 +326,17 @@ const UserPage = () => {
                                         value={maxThreshold} onChange={(e) => setMaxThreshold(e.target.value)}
                                     />
                                 </div>
+                                <div className={styles.favLocRow}>
+                                    <input 
+                                        type="date" 
+                                        className={styles.favLocAdd}
+                                        placeholder="Monitor Date (optional)" 
+                                        value={monitorDate} 
+                                        onChange={(e) => setMonitorDate(e.target.value)}
+                                        min={getMinimumDate()}
+                                    />
+                                </div>
+                                <p className={styles.dateNote}>Leave date empty for continuous monitoring</p>
                                 <button className={styles.userPageButton} onClick={handleSaveFavoriteLocation}>
                                     Save Favorite Location
                                 </button>
